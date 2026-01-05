@@ -1,6 +1,8 @@
 import requests
 import time
 
+send_message("🟢 Railway-botten HAR STARTAT")
+
 # =========================
 # KONFIGURATION
 # =========================
