@@ -62,14 +62,6 @@ while True:
     try:
         news = fetch_news()
 
-        # 🧪 TEST – verifiera Finnhub
-        send_message(f"🧪 Finnhub test – antal nyheter: {len(news)}")
-
-        if len(news) > 0:
-            send_message(
-                f"📰 TEST HEADLINE:\n{news[0].get('headline', 'NO HEADLINE')}"
-            )
-
         for item in news:
             if not isinstance(item, dict):
                 continue
