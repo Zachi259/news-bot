@@ -61,16 +61,16 @@ send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 while True:
     try:
         news = fetch_news()
-        
-send_message(f"🧪 Finnhub test – antal nyheter: {len(news)}")
+
+        # 🧪 TEST – verifiera Finnhub
+        send_message(f"🧪 Finnhub test – antal nyheter: {len(news)}")
 
         if len(news) > 0:
             send_message(
                 f"📰 TEST HEADLINE:\n{news[0].get('headline', 'NO HEADLINE')}"
             )
-                
+
         for item in news:
-            # 🔒 Skydd: hoppa över allt som inte är dict
             if not isinstance(item, dict):
                 continue
 
@@ -78,11 +78,9 @@ send_message(f"🧪 Finnhub test – antal nyheter: {len(news)}")
             related = item.get("related", "").strip()
             news_id = item.get("id")
 
-            # Hoppa över trasiga poster
             if not headline or not related or not news_id:
                 continue
 
-            # Undvik dubbletter
             if news_id in seen_ids:
                 continue
 
@@ -106,4 +104,3 @@ send_message(f"🧪 Finnhub test – antal nyheter: {len(news)}")
         print("Oväntat fel:", e)
         time.sleep(30)
 
-send_message("🟢 Railway-botten HAR STARTAT")
