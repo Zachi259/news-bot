@@ -61,7 +61,12 @@ send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 while True:
     try:
         news = fetch_news()
+send_message(f"🧪 Finnhub test – antal nyheter: {len(news)}")
 
+        if len(news) > 0:
+            send_message(
+                f"📰 TEST HEADLINE:\n{news[0].get('headline', 'NO HEADLINE')}"
+                
         for item in news:
             # 🔒 Skydd: hoppa över allt som inte är dict
             if not isinstance(item, dict):
