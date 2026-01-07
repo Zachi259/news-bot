@@ -1,6 +1,9 @@
 import requests
 import time
 
+print("### MAIN.PY STARTED ###")
+send_message("🧪 MAIN.PY HAR STARTAT")
+
 # =========================
 # KONFIGURATION
 # =========================
