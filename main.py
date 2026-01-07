@@ -73,8 +73,9 @@ while True:
             if not headline or not related or not news_id:
                 continue
 
-            if news_id in seen_ids:
-                continue
+            # if news_id in seen_ids:
+#     continue
+
 
             seen_ids.add(news_id)
 
