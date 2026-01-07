@@ -63,29 +63,25 @@ while True:
         news = fetch_news()
 
         for item in news:
-            if not isinstance(item, dict):
-                continue
+    if not isinstance(item, dict):
+        continue
 
-            headline = item.get("headline", "").strip()
-related = item.get("related", "").strip()
-news_id = item.get("id")
+    headline = item.get("headline", "").strip()
+    related = item.get("related", "").strip()
+    news_id = item.get("id")
 
-if not headline or not news_id:
-    continue
+    if not headline or not news_id:
+        continue
 
-            # if news_id in seen_ids:
-#     continue
+    seen_ids.add(news_id)
 
+    message = (
+        "📰 NEWS ALERT\n"
+        f"Ticker: {related}\n"
+        f"Headline: {headline}"
+    )
 
-            seen_ids.add(news_id)
-
-            message = (
-                "📰 NEWS ALERT\n"
-                f"Ticker: {related}\n"
-                f"Headline: {headline}"
-            )
-
-            send_message(message)
+    send_message(message)
 
         time.sleep(CHECK_INTERVAL)
 
