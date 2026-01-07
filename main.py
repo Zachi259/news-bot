@@ -1,9 +1,6 @@
 import requests
 import time
 
-print("### MAIN.PY STARTED ###")
-send_message("🧪 MAIN.PY HAR STARTAT")
-
 # =========================
 # KONFIGURATION
 # =========================
@@ -11,7 +8,7 @@ BOT_TOKEN = "7980179520:AAEjd0iiVhXwkRLNcg0Htj0ATArvklHQgIE"
 CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
-CHECK_INTERVAL = 60  # sekunder mellan varje koll
+CHECK_INTERVAL = 60
 
 # =========================
 # TELEGRAM
@@ -22,14 +19,14 @@ def send_message(text):
         "chat_id": CHAT_ID,
         "text": text
     }
+    requests.post(url, data=payload)
 
-    r = requests.post(url, data=payload)
-
-    if r.status_code != 200:
-        print("Telegram-fel:", r.text)
+# 🔽 NU ÄR ALLT DEFINIERAT
+print("### MAIN.PY STARTED ###")
+send_message("🧪 MAIN.PY HAR STARTAT")
 
 # =========================
-# FINNHUB – NYHETER
+# FINNHUB
 # =========================
 def fetch_news():
     url = "https://finnhub.io/api/v1/news"
