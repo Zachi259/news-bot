@@ -67,12 +67,11 @@ while True:
                 continue
 
             headline = item.get("headline", "").strip()
-            related = item.get("related", "").strip()
-            news_id = item.get("id")
+related = item.get("related", "").strip()
+news_id = item.get("id")
 
-            if not headline or not news_id:
+if not headline or not news_id:
     continue
-
 
             # if news_id in seen_ids:
 #     continue
