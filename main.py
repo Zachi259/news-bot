@@ -51,13 +51,24 @@ def fetch_news():
         return []
 
     return data
+    
 # =========================
 # S&P 500 – HÄMTA UNIVERSUM
 # =========================
 def fetch_sp500_tickers():
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    tables = pd.read_html(url)
-    df = tables[0]  # Första tabellen innehåller bolagen
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    response = requests.get(url, headers=headers, timeout=10)
+    response.raise_for_status()
+
+    tables = pd.read_html(response.text)
+    df = tables[0]
+
     tickers = df["Symbol"].tolist()
     return tickers
 
