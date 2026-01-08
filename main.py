@@ -81,7 +81,7 @@ seen_ids = set()
 
 SP500_TICKERS = fetch_sp500_tickers()
 
-BATCH_SIZE = 5      # antal bolag per varv
+BATCH_SIZE = 15      # antal bolag per varv
 ticker_index = 0    # håller koll på var vi är i listan
 
 send_message(f"📊 S&P 500 universum laddat: {len(SP500_TICKERS)} bolag")
