@@ -20,11 +20,13 @@ def send_message(text):
         "chat_id": CHAT_ID,
         "text": text
     }
-    requests.post(url, data=payload)
 
-# 🔽 NU ÄR ALLT DEFINIERAT
-print("### MAIN.PY STARTED ###")
-send_message("🧪 MAIN.PY HAR STARTAT")
+    r = requests.post(url, data=payload, timeout=10)
+
+    if r.status_code != 200:
+        print("❌ Telegram-fel:", r.status_code, r.text)
+    else:
+        print("✅ Telegram skickade:", text[:50])
 
 # =========================
 # FINNHUB
