@@ -31,25 +31,24 @@ def send_message(text):
 # =========================
 # FINNHUB
 # =========================
-def fetch_news():
-    url = "https://finnhub.io/api/v1/news"
+def fetch_company_news(symbol):
+    url = "https://finnhub.io/api/v1/company-news"
     params = {
-        "category": "general",
+        "symbol": symbol,
+        "from": "2024-01-01",
+        "to": time.strftime("%Y-%m-%d"),
         "token": FINNHUB_API_KEY
     }
 
     r = requests.get(url, params=params)
 
     if r.status_code != 200:
-        print("Finnhub HTTP-fel:", r.text)
+        print(f"Finnhub company-news fel ({symbol}):", r.text)
         return []
 
     data = r.json()
 
-    # 🔒 VIKTIG SÄKERHET:
-    # Finnhub kan ibland returnera string eller dict vid fel
     if not isinstance(data, list):
-        print("Oväntat Finnhub-svar:", data)
         return []
 
     return data
@@ -80,40 +79,49 @@ def fetch_sp500_tickers():
 seen_ids = set()
 
 SP500_TICKERS = fetch_sp500_tickers()
+
+BATCH_SIZE = 5      # antal bolag per varv
+ticker_index = 0    # håller koll på var vi är i listan
+
 send_message(f"📊 S&P 500 universum laddat: {len(SP500_TICKERS)} bolag")
 
 send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 
 while True:
     try:
-        news = fetch_news()
+        batch = SP500_TICKERS[ticker_index:ticker_index + BATCH_SIZE]
 
-        for item in news:
-            if not isinstance(item, dict):
-                continue
+        for symbol in batch:
+            news_items = fetch_company_news(symbol)
 
-            headline = item.get("headline", "").strip()
-            related = item.get("related", "").strip()
-            news_id = item.get("id")
+            for item in news_items:
+                headline = item.get("headline", "").strip()
+                news_id = item.get("id")
 
-            if not headline or not news_id:
-                continue
+                if not headline or not news_id:
+                    continue
 
-            seen_ids.add(news_id)
+                if news_id in seen_ids:
+                    continue
 
-            message = (
-                "📰 NEWS ALERT\n"
-                f"Ticker: {related}\n"
-                f"Headline: {headline}"
-            )
+                seen_ids.add(news_id)
 
-            send_message(message)
+                message = (
+                    "📰 COMPANY NEWS\n"
+                    f"Company: {symbol}\n"
+                    f"Headline: {headline}"
+                )
+
+                send_message(message)
+
+            time.sleep(1)  # liten paus per bolag (viktigt)
+
+        ticker_index += BATCH_SIZE
+
+        if ticker_index >= len(SP500_TICKERS):
+            ticker_index = 0  # börja om från början
 
         time.sleep(CHECK_INTERVAL)
-
-    except KeyboardInterrupt:
-        send_message("🔴 News-botten stoppades manuellt")
-        break
 
     except Exception as e:
         print("Oväntat fel:", e)
