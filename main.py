@@ -1,5 +1,6 @@
 import requests
 import time
+import pandas as pd
 
 # =========================
 # KONFIGURATION
@@ -50,11 +51,23 @@ def fetch_news():
         return []
 
     return data
+# =========================
+# S&P 500 – HÄMTA UNIVERSUM
+# =========================
+def fetch_sp500_tickers():
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    tables = pd.read_html(url)
+    df = tables[0]  # Första tabellen innehåller bolagen
+    tickers = df["Symbol"].tolist()
+    return tickers
 
 # =========================
 # MAIN
 # =========================
 seen_ids = set()
+
+SP500_TICKERS = fetch_sp500_tickers()
+send_message(f"📊 S&P 500 universum laddat: {len(SP500_TICKERS)} bolag")
 
 send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 
