@@ -34,10 +34,14 @@ def send_message(text):
 # =========================
 def fetch_company_news(symbol):
     url = "https://finnhub.io/api/v1/company-news"
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
     params = {
         "symbol": symbol,
-        "from": "2024-01-01",
-        "to": time.strftime("%Y-%m-%d"),
+        "from": yesterday,
+        "to": today,
         "token": FINNHUB_API_KEY
     }
 
@@ -79,6 +83,9 @@ def fetch_sp500_tickers():
 # =========================
 seen_ids = set()
 
+news_counter = {}
+last_report_date = None
+
 SP500_TICKERS = fetch_sp500_tickers()
 
 BATCH_SIZE = 15      # antal bolag per varv
@@ -88,8 +95,41 @@ send_message(f"📊 S&P 500 universum laddat: {len(SP500_TICKERS)} bolag")
 
 send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 
+from datetime import datetime
+
 while True:
     try:
+        now = datetime.now()
+
+        # =========================
+        # SKICKA PRE-MARKET RAPPORT KL 14:30
+        # =========================
+        if now.hour == 14 and now.minute == 30:
+            if last_report_date != now.date():
+
+                if news_counter:
+                    sorted_companies = sorted(
+                        news_counter.items(),
+                        key=lambda x: x[1]  # minst → mest
+                    )
+
+                    report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
+
+                    for company, count in sorted_companies:
+                        report_lines.append(
+                            f"Company: {company}\nNyheter: {count}\n────────────"
+                        )
+
+                    report = "\n".join(report_lines)
+                    send_message(report)
+
+                # reset för nytt dygn
+                news_counter.clear()
+                last_report_date = now.date()
+
+        # =========================
+        # SAMLA COMPANY-NEWS (TYST)
+        # =========================
         batch = SP500_TICKERS[ticker_index:ticker_index + BATCH_SIZE]
 
         for symbol in batch:
@@ -106,21 +146,13 @@ while True:
                     continue
 
                 seen_ids.add(news_id)
+                news_counter[symbol] = news_counter.get(symbol, 0) + 1
 
-                message = (
-                    "📰 COMPANY NEWS\n"
-                    f"Company: {symbol}\n"
-                    f"Headline: {headline}"
-                )
-
-                send_message(message)
-
-            time.sleep(1)  # liten paus per bolag (viktigt)
+            time.sleep(1)  # snäll mot Finnhub
 
         ticker_index += BATCH_SIZE
-
         if ticker_index >= len(SP500_TICKERS):
-            ticker_index = 0  # börja om från början
+            ticker_index = 0
 
         time.sleep(CHECK_INTERVAL)
 
