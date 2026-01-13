@@ -105,7 +105,7 @@ while True:
         # =========================
         # TEST: STATUS VAR 5:E MINUT
         # =========================
-      if now.hour == 22 and 27 <= now.minute < 28:
+      if now.hour == 14 and 30 <= now.minute < 31:
     if last_report_date != now.date():
         # skicka rapport
         last_report_date = now.date()
