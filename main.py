@@ -104,7 +104,7 @@ while True:
         # =========================
         # SKICKA PRE-MARKET RAPPORT 14:30
         # =========================
-        if now.hour == 22 and 36 <= now.minute < 37:
+        if now.hour == 14 and 45 <= now.minute < 46:
             if last_report_date != now.date():
 
                 if news_counter:
