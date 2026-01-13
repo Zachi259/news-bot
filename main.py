@@ -104,30 +104,30 @@ while True:
         # =========================
         # SKICKA PRE-MARKET RAPPORT (14:30–14:31)
         # =========================
-        if now.minute % 2 == 0:
+       # =========================
+# TEST: SKICKA RAPPORT OFTA
+# =========================
+if now.minute % 2 == 0:
 
-                if news_counter:
-                    sorted_companies = sorted(
-                        news_counter.items(),
-                        key=lambda x: x[1]
-                    )
+    if news_counter:
+        sorted_companies = sorted(
+            news_counter.items(),
+            key=lambda x: x[1]
+        )
 
-                    report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
+        report_lines = ["🧪 TEST – NEWS INTENSITY\n"]
 
-                    for company, count in sorted_companies:
-                        report_lines.append(
-                            f"Company: {company}\nNyheter: {count}\n────────────"
-                        )
+        for company, count in sorted_companies:
+            report_lines.append(
+                f"Company: {company}\nNyheter: {count}\n────────────"
+            )
 
-                    report = "\n".join(report_lines)
-                    send_message(report)
-                else:
-                    send_message(
-                        "📊 PRE-MARKET NEWS INTENSITY\n"
-                        "Inga company-nyheter senaste 24h"
-                    )
+        send_message("\n".join(report_lines))
+    else:
+        send_message("🧪 TEST – Inga nyheter ännu")
 
-                news_counter.clear()
+    news_counter.clear()
+
                 last_report_date = now.date()
 
         # =========================
