@@ -1,6 +1,7 @@
 import requests
 import time
 import pandas as pd
+from datetime import datetime, timedelta
 
 
 # =========================
@@ -82,51 +83,33 @@ def fetch_sp500_tickers():
 # MAIN
 # =========================
 seen_ids = set()
-
 news_counter = {}
+
 last_report_date = None
 
 SP500_TICKERS = fetch_sp500_tickers()
 
-BATCH_SIZE = 15      # antal bolag per varv
-ticker_index = 0    # håller koll på var vi är i listan
+BATCH_SIZE = 15
+ticker_index = 0
 
 send_message(f"📊 S&P 500 universum laddat: {len(SP500_TICKERS)} bolag")
-
 send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
-
-from datetime import datetime
 
 while True:
     try:
         now = datetime.now()
 
         # =========================
-        # TEST: SKICKA RAPPORT VAR 2:E MINUT
+        # TEST: STATUS VAR 5:E MINUT
         # =========================
-        if now.minute % 2 == 0:
-
-            if news_counter:
-                sorted_companies = sorted(
-                    news_counter.items(),
-                    key=lambda x: x[1]
-                )
-
-                report_lines = ["🧪 TEST – NEWS INTENSITY\n"]
-
-                for company, count in sorted_companies:
-                    report_lines.append(
-                        f"Company: {company}\nNyheter: {count}\n────────────"
-                    )
-
-                send_message("\n".join(report_lines))
-            else:
-                send_message("🧪 TEST – Inga nyheter ännu")
-
-            news_counter.clear()
+        if now.minute % 5 == 0:
+            send_message(
+                f"🧪 TEST STATUS\n"
+                f"Bolag med nyheter hittills: {len(news_counter)}"
+            )
 
         # =========================
-        # SAMLA COMPANY-NEWS (TYST)
+        # SAMLA COMPANY-NEWS
         # =========================
         batch = SP500_TICKERS[ticker_index:ticker_index + BATCH_SIZE]
 
@@ -157,3 +140,4 @@ while True:
     except Exception as e:
         print("Oväntat fel:", e)
         time.sleep(30)
+
