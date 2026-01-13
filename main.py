@@ -2,7 +2,9 @@ import requests
 import time
 import pandas as pd
 from datetime import datetime, timedelta
+import pytz
 
+sweden = pytz.timezone("Europe/Stockholm")
 
 # =========================
 # KONFIGURATION
@@ -97,16 +99,17 @@ send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 
 while True:
     try:
-        now = datetime.now()
+        now = datetime.now(sweden)
+
 
         # =========================
         # TEST: STATUS VAR 5:E MINUT
         # =========================
-        if now.minute % 5 == 0:
-            send_message(
-                f"🧪 TEST STATUS\n"
-                f"Bolag med nyheter hittills: {len(news_counter)}"
-            )
+      if now.hour == 22 and 27 <= now.minute < 28:
+    if last_report_date != now.date():
+        # skicka rapport
+        last_report_date = now.date()
+        news_counter.clear()
 
         # =========================
         # SAMLA COMPANY-NEWS
