@@ -102,15 +102,15 @@ while True:
         now = datetime.now()
 
         # =========================
-        # SKICKA PRE-MARKET RAPPORT KL 14:30
+        # SKICKA PRE-MARKET RAPPORT (14:30–14:31)
         # =========================
-        if now.hour == 14 and now.minute == 30:
+        if now.hour == 14 and 30 <= now.minute < 31:
             if last_report_date != now.date():
 
                 if news_counter:
                     sorted_companies = sorted(
                         news_counter.items(),
-                        key=lambda x: x[1]  # minst → mest
+                        key=lambda x: x[1]
                     )
 
                     report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
@@ -122,8 +122,12 @@ while True:
 
                     report = "\n".join(report_lines)
                     send_message(report)
+                else:
+                    send_message(
+                        "📊 PRE-MARKET NEWS INTENSITY\n"
+                        "Inga company-nyheter senaste 24h"
+                    )
 
-                # reset för nytt dygn
                 news_counter.clear()
                 last_report_date = now.date()
 
