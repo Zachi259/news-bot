@@ -102,33 +102,28 @@ while True:
         now = datetime.now()
 
         # =========================
-        # SKICKA PRE-MARKET RAPPORT (14:30–14:31)
+        # TEST: SKICKA RAPPORT VAR 2:E MINUT
         # =========================
-       # =========================
-# TEST: SKICKA RAPPORT OFTA
-# =========================
-if now.minute % 2 == 0:
+        if now.minute % 2 == 0:
 
-    if news_counter:
-        sorted_companies = sorted(
-            news_counter.items(),
-            key=lambda x: x[1]
-        )
+            if news_counter:
+                sorted_companies = sorted(
+                    news_counter.items(),
+                    key=lambda x: x[1]
+                )
 
-        report_lines = ["🧪 TEST – NEWS INTENSITY\n"]
+                report_lines = ["🧪 TEST – NEWS INTENSITY\n"]
 
-        for company, count in sorted_companies:
-            report_lines.append(
-                f"Company: {company}\nNyheter: {count}\n────────────"
-            )
+                for company, count in sorted_companies:
+                    report_lines.append(
+                        f"Company: {company}\nNyheter: {count}\n────────────"
+                    )
 
-        send_message("\n".join(report_lines))
-    else:
-        send_message("🧪 TEST – Inga nyheter ännu")
+                send_message("\n".join(report_lines))
+            else:
+                send_message("🧪 TEST – Inga nyheter ännu")
 
-    news_counter.clear()
-
-                last_report_date = now.date()
+            news_counter.clear()
 
         # =========================
         # SAMLA COMPANY-NEWS (TYST)
@@ -139,10 +134,10 @@ if now.minute % 2 == 0:
             news_items = fetch_company_news(symbol)
 
             for item in news_items:
-                headline = item.get("headline", "").strip()
                 news_id = item.get("id")
+                headline = item.get("headline", "").strip()
 
-                if not headline or not news_id:
+                if not news_id or not headline:
                     continue
 
                 if news_id in seen_ids:
@@ -151,7 +146,7 @@ if now.minute % 2 == 0:
                 seen_ids.add(news_id)
                 news_counter[symbol] = news_counter.get(symbol, 0) + 1
 
-            time.sleep(1)  # snäll mot Finnhub
+            time.sleep(1)
 
         ticker_index += BATCH_SIZE
         if ticker_index >= len(SP500_TICKERS):
