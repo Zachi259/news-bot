@@ -101,18 +101,37 @@ while True:
     try:
         now = datetime.now(sweden)
 
+        # =========================
+        # SKICKA PRE-MARKET RAPPORT 14:30
+        # =========================
+        if now.hour == 14 and 30 <= now.minute < 31:
+            if last_report_date != now.date():
+
+                if news_counter:
+                    sorted_companies = sorted(
+                        news_counter.items(),
+                        key=lambda x: x[1]
+                    )
+
+                    report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
+
+                    for company, count in sorted_companies:
+                        report_lines.append(
+                            f"Company: {company}\nNyheter: {count}\n────────────"
+                        )
+
+                    send_message("\n".join(report_lines))
+                else:
+                    send_message(
+                        "📊 PRE-MARKET NEWS INTENSITY\n"
+                        "Inga company-nyheter senaste 24h"
+                    )
+
+                news_counter.clear()
+                last_report_date = now.date()
 
         # =========================
-        # TEST: STATUS VAR 5:E MINUT
-        # =========================
-      if now.hour == 14 and 30 <= now.minute < 31:
-    if last_report_date != now.date():
-        # skicka rapport
-        last_report_date = now.date()
-        news_counter.clear()
-
-        # =========================
-        # SAMLA COMPANY-NEWS
+        # SAMLA COMPANY-NEWS (TYST)
         # =========================
         batch = SP500_TICKERS[ticker_index:ticker_index + BATCH_SIZE]
 
