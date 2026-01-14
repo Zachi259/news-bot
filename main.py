@@ -102,36 +102,6 @@ while True:
         now = datetime.now(sweden)
 
         # =========================
-        # SKICKA PRE-MARKET RAPPORT (EFTER 14:30, 1 gång/dag)
-        # =========================
-        if now.hour >= 16 and last_report_date != now.date():
-
-            if news_counter:
-                sorted_companies = sorted(
-                    news_counter.items(),
-                    key=lambda x: x[1]
-                )
-
-                report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
-
-                for company, count in sorted_companies:
-                    report_lines.append(
-                        f"Company: {company}\nNyheter: {count}\n────────────"
-                    )
-
-                report = "\n".join(report_lines)
-                send_message(report)
-
-            else:
-                send_message(
-                    "📊 PRE-MARKET NEWS INTENSITY\n"
-                    "Inga company-nyheter senaste 24h"
-                )
-
-            news_counter.clear()
-            last_report_date = now.date()
-
-        # =========================
         # SAMLA COMPANY-NEWS (TYST)
         # =========================
         batch = SP500_TICKERS[ticker_index:ticker_index + BATCH_SIZE]
@@ -158,10 +128,36 @@ while True:
         if ticker_index >= len(SP500_TICKERS):
             ticker_index = 0
 
+        # =========================
+        # SKICKA DAGLIG RAPPORT (EFTER 16:00, 1 GÅNG)
+        # =========================
+        if now.hour >= 16 and last_report_date != now.date():
+
+            if news_counter:
+                sorted_companies = sorted(
+                    news_counter.items(),
+                    key=lambda x: x[1]
+                )
+
+                report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
+
+                for company, count in sorted_companies:
+                    report_lines.append(
+                        f"Company: {company}\nNyheter: {count}\n────────────"
+                    )
+
+                send_message("\n".join(report_lines))
+            else:
+                send_message(
+                    "📊 PRE-MARKET NEWS INTENSITY\n"
+                    "Inga company-nyheter senaste 24h"
+                )
+
+            news_counter.clear()
+            last_report_date = now.date()
+
         time.sleep(CHECK_INTERVAL)
 
     except Exception as e:
         print("Oväntat fel:", e)
         time.sleep(30)
-
-
