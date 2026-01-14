@@ -104,7 +104,7 @@ while True:
         # =========================
         # SKICKA PRE-MARKET RAPPORT (EFTER 14:30, 1 gång/dag)
         # =========================
-        if now.hour >= 14 and last_report_date != now.date():
+        if now.hour >= 16 and last_report_date != now.date():
 
             if news_counter:
                 sorted_companies = sorted(
