@@ -131,7 +131,7 @@ while True:
         # =========================
         # SKICKA DAGLIG RAPPORT (EFTER 16:00, 1 GÅNG)
         # =========================
-        if now.hour >= 16 and last_report_date != now.date():
+        if now.hour >= 17 and last_report_date != now.date():
 
             if news_counter:
                 sorted_companies = sorted(
