@@ -14,6 +14,10 @@ CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
 CHECK_INTERVAL = 60
+REPORT_HOUR = 15          # svensk tid
+REPORT_MINUTE_START = 25  # t.ex. 15:25
+REPORT_MINUTE_END = 40    # t.ex. 15:40
+
 
 # =========================
 # TELEGRAM
@@ -131,7 +135,12 @@ while True:
         # =========================
         # SKICKA DAGLIG RAPPORT (EFTER 16:00, 1 GÅNG)
         # =========================
-        if now.hour >= 16 and last_report_date != now.date():
+        if (
+    now.hour == REPORT_HOUR
+    and REPORT_MINUTE_START <= now.minute < REPORT_MINUTE_END
+    and last_report_date != now.date()
+        ):
+
 
             if news_counter:
                 sorted_companies = sorted(
