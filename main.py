@@ -136,9 +136,9 @@ while True:
         # SKICKA DAGLIG RAPPORT (EFTER 16:00, 1 GÅNG)
         # =========================
         if (
-    now.hour == REPORT_HOUR
-    and REPORT_MINUTE_START <= now.minute < REPORT_MINUTE_END
-    and last_report_date != now.date()
+            now.hour == REPORT_HOUR
+            and REPORT_MINUTE_START <= now.minute < REPORT_MINUTE_END
+            and last_report_date != now.date()
         ):
 
 
