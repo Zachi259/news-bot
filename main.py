@@ -14,10 +14,7 @@ CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
 CHECK_INTERVAL = 60
-REPORT_HOUR = 15          # svensk tid
-REPORT_MINUTE_START = 25  # t.ex. 15:25
-REPORT_MINUTE_END = 40    # t.ex. 15:40
-
+REPORT_HOUR = now.hour
 
 # =========================
 # TELEGRAM
@@ -90,7 +87,6 @@ def fetch_sp500_tickers():
 # =========================
 seen_ids = set()
 news_counter = {}
-
 last_report_date = None
 
 SP500_TICKERS = fetch_sp500_tickers()
@@ -119,7 +115,6 @@ while True:
 
                 if not news_id or not headline:
                     continue
-
                 if news_id in seen_ids:
                     continue
 
@@ -133,14 +128,9 @@ while True:
             ticker_index = 0
 
         # =========================
-        # SKICKA DAGLIG RAPPORT (EFTER 16:00, 1 GÅNG)
+        # SKICKA DAGLIG RAPPORT (1 gång/dag efter REPORT_HOUR)
         # =========================
-        if (
-            now.hour == REPORT_HOUR
-            and REPORT_MINUTE_START <= now.minute < REPORT_MINUTE_END
-            and last_report_date != now.date()
-        ):
-
+        if now.hour >= REPORT_HOUR and last_report_date != now.date():
 
             if news_counter:
                 sorted_companies = sorted(
