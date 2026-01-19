@@ -15,6 +15,7 @@ FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
 CHECK_INTERVAL = 60
 REPORT_HOUR = 15
+REPORT_MINUTE = 0   # exakt 15:00
 
 # =========================
 # TELEGRAM
@@ -128,9 +129,12 @@ while True:
             ticker_index = 0
 
         # =========================
-        # SKICKA DAGLIG RAPPORT (1 gång/dag efter REPORT_HOUR)
+        # SKICKA DAGLIG RAPPORT (1 gång/dag)
         # =========================
-        if now.hour >= REPORT_HOUR and last_report_date != now.date():
+        if (
+            now.hour > REPORT_HOUR
+            or (now.hour == REPORT_HOUR and now.minute >= REPORT_MINUTE)
+        ) and last_report_date != now.date():
 
             if news_counter:
                 sorted_companies = sorted(
@@ -141,15 +145,12 @@ while True:
                 report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
 
                 for company, count in sorted_companies:
-                    report_lines.append(
-                        f"Company: {company}\nNyheter: {count}\n────────────"
-                    )
+                    report_lines.append(f"{company}: {count}")
 
                 send_message("\n".join(report_lines))
             else:
                 send_message(
-                    "📊 PRE-MARKET NEWS INTENSITY\n"
-                    "Inga company-nyheter senaste 24h"
+                    "📊 PRE-MARKET NEWS INTENSITY\nInga nyheter senaste 24h"
                 )
 
             news_counter.clear()
