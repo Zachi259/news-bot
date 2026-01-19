@@ -14,8 +14,8 @@ CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
 CHECK_INTERVAL = 60
-REPORT_HOUR = 15
-REPORT_MINUTE = 0   # exakt 15:00
+REPORT_HOUR = now.hour
+REPORT_MINUTE = now.minute + 1
 
 # =========================
 # TELEGRAM
