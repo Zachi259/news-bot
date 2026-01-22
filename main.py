@@ -1,6 +1,5 @@
 import requests
 import time
-import pandas as pd
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -67,20 +66,21 @@ def fetch_company_news(symbol):
 # S&P 500 – HÄMTA UNIVERSUM
 # =========================
 def fetch_sp500_tickers():
-    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (compatible; NewsBot/1.0)",
-        "Accept-Language": "en-US,en;q=0.9",
+    url = "https://finnhub.io/api/v1/index/constituents"
+    params = {
+        "symbol": "^GSPC",
+        "token": FINNHUB_API_KEY
     }
 
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
+    r = requests.get(url, params=params, timeout=10)
 
-    tables = pd.read_html(response.text)
-    df = tables[0]
+    if r.status_code != 200:
+        print("❌ Finnhub index-fel:", r.text)
+        return []
 
-    tickers = df["Symbol"].tolist()
+    data = r.json()
+
+    tickers = data.get("constituents", [])
     return tickers
 
 # =========================
@@ -91,6 +91,10 @@ news_counter = {}
 last_report_date = None
 
 SP500_TICKERS = fetch_sp500_tickers()
+
+if not SP500_TICKERS:
+    send_message("❌ Kunde inte ladda S&P 500 från Finnhub")
+    raise SystemExit
 
 BATCH_SIZE = 15
 ticker_index = 0
