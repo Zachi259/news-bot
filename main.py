@@ -36,31 +36,29 @@ def send_message(text):
 # =========================
 # FINNHUB
 # =========================
-def fetch_company_news(symbol):
-    url = "https://finnhub.io/api/v1/company-news"
-
-    today = datetime.now().strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-
+def fetch_us_symbols():
+    url = "https://finnhub.io/api/v1/stock/symbol"
     params = {
-        "symbol": symbol,
-        "from": yesterday,
-        "to": today,
+        "exchange": "US",
         "token": FINNHUB_API_KEY
     }
 
-    r = requests.get(url, params=params)
+    r = requests.get(url, params=params, timeout=10)
 
     if r.status_code != 200:
-        print(f"Finnhub company-news fel ({symbol}):", r.text)
+        print("❌ Finnhub symbol-fel:", r.text)
         return []
 
     data = r.json()
 
-    if not isinstance(data, list):
-        return []
+    # Filtrera till vanliga aktier (inte ETF/ADR/etc)
+    symbols = [
+        item["symbol"]
+        for item in data
+        if item.get("type") == "Common Stock"
+    ]
 
-    return data
+    return symbols
     
 # =========================
 # S&P 500 – HÄMTA UNIVERSUM
@@ -90,7 +88,7 @@ seen_ids = set()
 news_counter = {}
 last_report_date = None
 
-SP500_TICKERS = fetch_sp500_tickers()
+SP500_TICKERS = fetch_us_symbols()
 
 if not SP500_TICKERS:
     send_message("❌ Kunde inte ladda S&P 500 från Finnhub")
