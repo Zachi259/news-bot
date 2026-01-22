@@ -2,9 +2,9 @@ import requests
 import time
 import pandas as pd
 from datetime import datetime, timedelta
-import pytz
+from zoneinfo import ZoneInfo
 
-sweden = pytz.timezone("Europe/Stockholm")
+sweden = ZoneInfo("Europe/Stockholm")
 
 # =========================
 # KONFIGURATION
