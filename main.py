@@ -98,6 +98,22 @@ ticker_index = 0
 send_message(f"📊 S&P 500 universum laddat: {len(SP500_TICKERS)} bolag")
 send_message("🟢 News-botten är live och lyssnar på USA-nyheter")
 
+def is_valid_news_time(unix_ts):
+    """
+    Returnerar True om nyheten ska räknas med i nästa dags rapport
+    Exkluderar nyheter mellan 15:30–22:00 svensk tid
+    """
+    news_time = datetime.fromtimestamp(unix_ts, tz=sweden)
+
+    hour = news_time.hour
+    minute = news_time.minute
+
+    # Exkludera 15:30–22:00
+    if (hour == 15 and minute >= 30) or (15 < hour < 22):
+        return False
+
+    return True
+
 while True:
     try:
         now = datetime.now(sweden)
@@ -113,9 +129,15 @@ while True:
             for item in news_items:
                 news_id = item.get("id")
                 headline = item.get("headline", "").strip()
+                news_ts = item.get("datetime")
 
-                if not news_id or not headline:
+                if not news_id or not headline or not news_ts:
                     continue
+
+                # 🔥 TIDSFILTER 15:30–22:00
+                if not is_valid_news_time(news_ts):
+                    continue
+
                 if news_id in seen_ids:
                     continue
 
@@ -129,7 +151,7 @@ while True:
             ticker_index = 0
 
         # =========================
-        # SKICKA DAGLIG RAPPORT (1 gång/dag)
+        # SKICKA DAGLIG RAPPORT
         # =========================
         if (
             now.hour > REPORT_HOUR
@@ -143,7 +165,6 @@ while True:
                 )
 
                 report_lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
-
                 for company, count in sorted_companies:
                     report_lines.append(f"{company}: {count}")
 
