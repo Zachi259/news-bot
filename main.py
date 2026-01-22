@@ -14,7 +14,7 @@ FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
 CHECK_INTERVAL = 60
 REPORT_HOUR = 00        # t.ex. 15:00 svensk tid
-REPORT_MINUTE = 10
+REPORT_MINUTE = 35
 
 # =========================
 # TELEGRAM
@@ -36,6 +36,27 @@ def send_message(text):
 # =========================
 # FINNHUB
 # =========================
+def fetch_company_news(symbol):
+    url = "https://finnhub.io/api/v1/company-news"
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    params = {
+        "symbol": symbol,
+        "from": yesterday,
+        "to": today,
+        "token": FINNHUB_API_KEY
+    }
+
+    r = requests.get(url, params=params, timeout=10)
+
+    if r.status_code != 200:
+        return []
+
+    data = r.json()
+    return data if isinstance(data, list) else []
+
 def fetch_us_symbols():
     url = "https://finnhub.io/api/v1/stock/symbol"
     params = {
