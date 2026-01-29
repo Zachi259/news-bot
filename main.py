@@ -15,7 +15,7 @@ FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 CHECK_INTERVAL = 60
 
 REPORT_HOUR = 15
-REPORT_MINUTE = 0
+REPORT_MINUTE = 30
 
 HEARTBEAT_EVERY_MIN = 30  # ping var 30:e minut så du ser att den lever
 
