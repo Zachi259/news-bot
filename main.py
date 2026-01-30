@@ -162,8 +162,10 @@ while True:
                     continue
                 if news_id in seen_ids:
                     continue
-                if not is_valid_news_time(ts):
-                    continue
+               # 🔥 TIDSFILTER AVSTÄNGT (TEST)
+                # if not is_valid_news_time(news_ts):
+                #     continue
+
 
                 seen_ids.add(news_id)
                 news_counter[symbol] = news_counter.get(symbol, 0) + 1
