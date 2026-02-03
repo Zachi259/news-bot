@@ -164,8 +164,6 @@ while True:
                     continue
                 if news_id in seen_ids:
                     continue
-
-                # TIDSFILTER (kan kommenteras bort vid test)
                 if not is_valid_news_time(ts):
                     continue
 
@@ -181,29 +179,19 @@ while True:
         # =========================
         # DAGLIG RAPPORT (15:00)
         # =========================
-        should_send_today = (
+        if (
             (now.hour > REPORT_HOUR or
              (now.hour == REPORT_HOUR and now.minute >= REPORT_MINUTE))
             and report_sent_date != now.date()
-        )
-
-        if should_send_today:
+        ):
             if news_counter:
-                sorted_companies = sorted(
-                    news_counter.items(),
-                    key=lambda x: x[1]
-                )
-
+                sorted_companies = sorted(news_counter.items(), key=lambda x: x[1])
                 lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
                 for sym, cnt in sorted_companies:
                     lines.append(f"{sym}: {cnt}")
-
                 send_message("\n".join(lines))
             else:
-                send_message(
-                    "📊 PRE-MARKET NEWS INTENSITY (24h)\n"
-                    "Inga nyheter i datan"
-                )
+                send_message("📊 PRE-MARKET NEWS INTENSITY (24h)\nInga nyheter i datan")
 
             news_counter.clear()
             report_sent_date = now.date()
@@ -218,4 +206,3 @@ while True:
 
         print("Oväntat fel:", e)
         time.sleep(30)
-sleep(30)
