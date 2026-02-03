@@ -17,7 +17,7 @@ CHECK_INTERVAL = 60
 REPORT_HOUR = 15
 REPORT_MINUTE = 00
 
-HEARTBEAT_EVERY_MIN = 30  # ping var 30:e minut så du ser att den lever
+HEARTBEAT_EVERY_HOUR = True
 
 BATCH_SIZE = 15
 SLEEP_BETWEEN_SYMBOLS = 1  # snäll mot Finnhub
@@ -113,27 +113,104 @@ send_message("🟢 Samlar news tyst + skickar daglig rapport.")
 
 ticker_index = 0
 
+last_heartbeat_hour = None
+
 while True:
     try:
         now = datetime.now(sweden)
 
-        # 1️⃣ HEARTBEAT
-        ...
+        # =========================
+        # HEARTBEAT (1 gång / timme)
+        # =========================
+        if last_heartbeat_hour != now.hour:
+            last_heartbeat_hour = now.hour
 
-        # 2️⃣ SAMLA NEWS (tyst)
+            if news_counter:
+                snapshot = sorted(
+                    news_counter.items(),
+                    key=lambda x: x[1],
+                    reverse=True
+                )[:20]
+
+                lines = [
+                    f"🫀 HEARTBEAT {now.strftime('%Y-%m-%d %H:%M')}",
+                    f"Bolag med news hittills: {len(news_counter)}",
+                    ""
+                ]
+
+                for sym, cnt in snapshot:
+                    lines.append(f"{sym}: {cnt}")
+
+                send_message("\n".join(lines))
+            else:
+                send_message(
+                    f"🫀 HEARTBEAT {now.strftime('%Y-%m-%d %H:%M')}\n"
+                    "Inga nyheter insamlade ännu"
+                )
+
+        # =========================
+        # SAMLA NEWS (tyst)
+        # =========================
         batch = tickers[ticker_index:ticker_index + BATCH_SIZE]
-        for symbol in batch:
-            ...
-        ticker_index += BATCH_SIZE
 
-        # 3️⃣ DAGLIG RAPPORT (SIST!)
+        for symbol in batch:
+            items = fetch_company_news(symbol)
+
+            for item in items:
+                news_id = item.get("id")
+                ts = item.get("datetime")
+
+                if not news_id or not ts:
+                    continue
+                if news_id in seen_ids:
+                    continue
+
+                # TIDSFILTER (kan kommenteras bort vid test)
+                if not is_valid_news_time(ts):
+                    continue
+
+                seen_ids.add(news_id)
+                news_counter[symbol] = news_counter.get(symbol, 0) + 1
+
+            time.sleep(SLEEP_BETWEEN_SYMBOLS)
+
+        ticker_index += BATCH_SIZE
+        if ticker_index >= len(tickers):
+            ticker_index = 0
+
+        # =========================
+        # DAGLIG RAPPORT (15:00)
+        # =========================
+        should_send_today = (
+            (now.hour > REPORT_HOUR or
+             (now.hour == REPORT_HOUR and now.minute >= REPORT_MINUTE))
+            and report_sent_date != now.date()
+        )
+
         if should_send_today:
-            ...
+            if news_counter:
+                sorted_companies = sorted(
+                    news_counter.items(),
+                    key=lambda x: x[1]
+                )
+
+                lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
+                for sym, cnt in sorted_companies:
+                    lines.append(f"{sym}: {cnt}")
+
+                send_message("\n".join(lines))
+            else:
+                send_message(
+                    "📊 PRE-MARKET NEWS INTENSITY (24h)\n"
+                    "Inga nyheter i datan"
+                )
+
+            news_counter.clear()
+            report_sent_date = now.date()
 
         time.sleep(CHECK_INTERVAL)
 
     except Exception as e:
-        # Skicka fel till Telegram så du aldrig blir blind
         try:
             send_message(f"❌ Bot error: {type(e).__name__}: {str(e)[:200]}")
         except Exception:
@@ -141,3 +218,4 @@ while True:
 
         print("Oväntat fel:", e)
         time.sleep(30)
+sleep(30)
