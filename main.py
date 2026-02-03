@@ -117,72 +117,27 @@ while True:
     try:
         now = datetime.now(sweden)
 
-        # -------------------------
-        # HEARTBEAT (var 30:e minut)
-        # -------------------------
-        heartbeat_bucket = (now.hour, now.minute // HEARTBEAT_EVERY_MIN)
-        if heartbeat_bucket != last_heartbeat_bucket:
-            last_heartbeat_bucket = heartbeat_bucket
-            send_message(f"🫀 Heartbeat {now.strftime('%Y-%m-%d %H:%M')} | bolag med news: {len(news_counter)}")
+        # 1️⃣ HEARTBEAT
+        ...
 
-        # -------------------------
-        # DAGLIG RAPPORT (missas ej)
-        # -------------------------
-        should_send_today = (
-            (now.hour > REPORT_HOUR) or (now.hour == REPORT_HOUR and now.minute >= REPORT_MINUTE)
-        ) and (report_sent_date != now.date())
-
-        if should_send_today:
-            if news_counter:
-                # minst->mest så mest hamnar längst ner (som du vill)
-                sorted_companies = sorted(news_counter.items(), key=lambda x: x[1])
-                lines = ["📊 PRE-MARKET NEWS INTENSITY (24h)\n"]
-                for sym, cnt in sorted_companies:
-                    lines.append(f"{sym}: {cnt}")
-                send_message("\n".join(lines))
-            else:
-                send_message("📊 PRE-MARKET NEWS INTENSITY (24h)\nInga nyheter i datan ännu")
-
-            # reset för nästa dygn
-            news_counter.clear()
-            report_sent_date = now.date()
-
-        # -------------------------
-        # SAMLA NEWS (tyst)
-        # -------------------------
+        # 2️⃣ SAMLA NEWS (tyst)
         batch = tickers[ticker_index:ticker_index + BATCH_SIZE]
-
         for symbol in batch:
-            items = fetch_company_news(symbol)
-            for item in items:
-                news_id = item.get("id")
-                ts = item.get("datetime")
-
-                if not news_id or not ts:
-                    continue
-                if news_id in seen_ids:
-                    continue
-               # 🔥 TIDSFILTER AVSTÄNGT (TEST)
-                # if not is_valid_news_time(news_ts):
-                #     continue
-
-
-                seen_ids.add(news_id)
-                news_counter[symbol] = news_counter.get(symbol, 0) + 1
-
-            time.sleep(SLEEP_BETWEEN_SYMBOLS)
-
+            ...
         ticker_index += BATCH_SIZE
-        if ticker_index >= len(tickers):
-            ticker_index = 0
+
+        # 3️⃣ DAGLIG RAPPORT (SIST!)
+        if should_send_today:
+            ...
 
         time.sleep(CHECK_INTERVAL)
 
     except Exception as e:
-        # Skicka fel till Telegram så du aldrig “blir blind”
+        # Skicka fel till Telegram så du aldrig blir blind
         try:
             send_message(f"❌ Bot error: {type(e).__name__}: {str(e)[:200]}")
         except Exception:
             pass
+
         print("Oväntat fel:", e)
         time.sleep(30)
