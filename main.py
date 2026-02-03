@@ -3,6 +3,8 @@ import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+print("🔥 BOT VERSION 2026-02-03 15:XX 🔥")  # ✅ print kan vara direkt efter imports
+
 sweden = ZoneInfo("Europe/Stockholm")
 
 # =========================
