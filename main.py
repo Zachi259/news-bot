@@ -116,6 +116,25 @@ def is_valid_news_time(unix_ts: int) -> bool:
 # MAIN LOOP
 # =========================
 
+# =========================
+# MAIN (init)
+# =========================
+seen_ids = set()
+news_counter = {}
+
+report_sent_date = None
+ticker_index = 0
+
+last_heartbeat_hour = None  # ✅ FIX: behövs för heartbeat
+
+tickers = fetch_us_symbols()
+
+if not tickers:
+    send_message("❌ Kunde inte ladda symboler från Finnhub")
+    raise SystemExit
+
+send_message(f"✅ Bot startad. Universe: {len(tickers)} symboler.")
+
 while True:
     try:
         now = datetime.now(sweden)
