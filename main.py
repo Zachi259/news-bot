@@ -1,81 +1,174 @@
 import requests
 import time
-from datetime import datetime, timedelta 
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-print("🔥 BOT VERSION CATALYST RADAR V1 🔥")
+print("🔥 BOT VERSION CATALYST RADAR V2 🔥")
 
 sweden = ZoneInfo("Europe/Stockholm")
 
+# =========================
+# KONFIGURATION
+# =========================
 BOT_TOKEN = "7980179520:AAEjd0iiVhXwkRLNcg0Htj0ATArvklHQgIE"
 CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
 CHECK_INTERVAL = 60
 
-REPORT_HOUR = 15
-REPORT_MINUTE = 0
-
 BATCH_SIZE = 15
 SLEEP_BETWEEN_SYMBOLS = 1
 
-MIN_MCAP = 300
-MAX_MCAP = 20000
+MIN_MCAP = 300       # 300M USD
+MAX_MCAP = 20000     # 20B USD
+
+FAST_START_HOUR = 14
+FAST_START_MINUTE = 30
+
+FAST_END_HOUR = 16
+FAST_END_MINUTE = 30
+
+FAST_INTERVAL_SECONDS = 20 * 60
+NORMAL_INTERVAL_SECONDS = 60 * 60
 
 
+# =========================
+# TELEGRAM
+# =========================
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": text}, timeout=10)
+
+    try:
+        r = requests.post(
+            url,
+            data={"chat_id": CHAT_ID, "text": text},
+            timeout=10
+        )
+
+        if r.status_code != 200:
+            print("❌ Telegram-fel:", r.status_code, r.text)
+        else:
+            print("✅ Telegram skickade:", text[:80])
+
+    except Exception as e:
+        print("❌ Telegram exception:", e)
 
 
-def fetch_company_news(symbol):
+# =========================
+# TIDSFÖNSTER 22:00 → 15:30
+# =========================
+def get_news_window(now):
+    """
+    Returnerar start/slut för aktiva nyhetsfönstret:
+    22:00 kvällen innan → 15:30 idag
+    eller om klockan är efter 22:00:
+    22:00 idag → 15:30 imorgon
+    """
+
+    if now.hour >= 22:
+        start = now.replace(hour=22, minute=0, second=0, microsecond=0)
+        end = (now + timedelta(days=1)).replace(
+            hour=15, minute=30, second=0, microsecond=0
+        )
+    else:
+        start = (now - timedelta(days=1)).replace(
+            hour=22, minute=0, second=0, microsecond=0
+        )
+        end = now.replace(hour=15, minute=30, second=0, microsecond=0)
+
+    return start, end
+
+
+def is_valid_news_time(unix_ts, now):
+    news_time = datetime.fromtimestamp(unix_ts, tz=sweden)
+    start, end = get_news_window(now)
+
+    return start <= news_time <= end
+
+
+# =========================
+# FINNHUB
+# =========================
+def fetch_company_news(symbol, now):
     url = "https://finnhub.io/api/v1/company-news"
 
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    start, _ = get_news_window(now)
 
     params = {
         "symbol": symbol,
-        "from": yesterday,
-        "to": today,
+        "from": start.strftime("%Y-%m-%d"),
+        "to": now.strftime("%Y-%m-%d"),
         "token": FINNHUB_API_KEY
     }
 
-    r = requests.get(url, params=params, timeout=10)
-    if r.status_code != 200:
-        return []
+    try:
+        r = requests.get(url, params=params, timeout=10)
 
-    data = r.json()
-    return data if isinstance(data, list) else []
+        if r.status_code != 200:
+            print(f"❌ Finnhub company-news fel {symbol}: {r.status_code} {r.text[:120]}")
+            return []
+
+        data = r.json()
+        return data if isinstance(data, list) else []
+
+    except Exception as e:
+        print(f"❌ Finnhub exception {symbol}:", e)
+        return []
 
 
 def fetch_us_symbols():
     url = "https://finnhub.io/api/v1/stock/symbol"
-    params = {"exchange": "US", "token": FINNHUB_API_KEY}
 
-    r = requests.get(url, params=params, timeout=20)
-    if r.status_code != 200:
+    params = {
+        "exchange": "US",
+        "token": FINNHUB_API_KEY
+    }
+
+    try:
+        r = requests.get(url, params=params, timeout=20)
+
+        if r.status_code != 200:
+            print("❌ Finnhub symbol-fel:", r.text[:200])
+            return []
+
+        data = r.json()
+
+        return [
+            x["symbol"]
+            for x in data
+            if x.get("type") == "Common Stock"
+        ]
+
+    except Exception as e:
+        print("❌ Symbol exception:", e)
         return []
-
-    data = r.json()
-    return [x["symbol"] for x in data if x.get("type") == "Common Stock"]
 
 
 def fetch_market_cap(symbol):
     url = "https://finnhub.io/api/v1/stock/profile2"
-    params = {"symbol": symbol, "token": FINNHUB_API_KEY}
+
+    params = {
+        "symbol": symbol,
+        "token": FINNHUB_API_KEY
+    }
 
     try:
         r = requests.get(url, params=params, timeout=10)
+
         if r.status_code != 200:
             return None
-        return r.json().get("marketCapitalization")
+
+        data = r.json()
+        return data.get("marketCapitalization")
+
     except:
         return None
 
 
+# =========================
+# CATALYST SCORING
+# =========================
 def catalyst_score(text):
-
     text = text.lower()
 
     keywords = [
@@ -91,7 +184,14 @@ def catalyst_score(text):
         "forecast",
         "revenue",
         "phase",
-        "study"
+        "study",
+        "clinical",
+        "merger",
+        "takeover",
+        "order",
+        "deal",
+        "backlog",
+        "outlook"
     ]
 
     score = 0
@@ -103,25 +203,84 @@ def catalyst_score(text):
     return score
 
 
-def is_valid_news_time(unix_ts):
+# =========================
+# RADAR SCHEMA
+# =========================
+def in_fast_send_window(now):
+    current_minutes = now.hour * 60 + now.minute
+    start_minutes = FAST_START_HOUR * 60 + FAST_START_MINUTE
+    end_minutes = FAST_END_HOUR * 60 + FAST_END_MINUTE
 
-    news_time = datetime.fromtimestamp(unix_ts, tz=sweden)
-    h = news_time.hour
-    m = news_time.minute
-
-    if (h == 15 and m >= 30) or (15 < h < 22):
-        return False
-
-    return True
+    return start_minutes <= current_minutes <= end_minutes
 
 
+def current_send_interval(now):
+    if in_fast_send_window(now):
+        return FAST_INTERVAL_SECONDS
+
+    return NORMAL_INTERVAL_SECONDS
+
+
+def should_send_radar(now, last_sent_at):
+    if last_sent_at is None:
+        return True
+
+    interval = current_send_interval(now)
+    seconds_since_last = (now - last_sent_at).total_seconds()
+
+    return seconds_since_last >= interval
+
+
+def build_radar_message(now, news_counter, catalyst_counter):
+    tradable = []
+
+    for sym, score in catalyst_counter.items():
+        mcap = fetch_market_cap(sym)
+
+        if not mcap:
+            continue
+
+        if mcap < MIN_MCAP or mcap > MAX_MCAP:
+            continue
+
+        intensity = news_counter.get(sym, 0)
+
+        tradable.append((sym, score, intensity, mcap))
+
+    tradable.sort(key=lambda x: (x[1], x[2]), reverse=True)
+
+    if not tradable:
+        return (
+            f"🫀 LIVE CATALYST RADAR {now.strftime('%H:%M')}\n"
+            f"No catalysts yet\n"
+            f"Total news stocks: {len(news_counter)}"
+        )
+
+    lines = [
+        f"🫀 LIVE CATALYST RADAR {now.strftime('%H:%M')}",
+        f"Tradable stocks: {len(tradable)}",
+        f"Total news stocks: {len(news_counter)}",
+        ""
+    ]
+
+    for sym, score, intensity, mcap in tradable[:15]:
+        lines.append(
+            f"{sym} | cat:{score} | news:{intensity} | {round(mcap / 1000, 2)}B"
+        )
+
+    return "\n".join(lines)
+
+
+# =========================
+# INIT
+# =========================
 seen_ids = set()
 news_counter = {}
 catalyst_counter = {}
 
-report_sent_date = None
-last_heartbeat_hour = None
 ticker_index = 0
+last_radar_sent_at = None
+active_window_start = None
 
 tickers = fetch_us_symbols()
 
@@ -132,60 +291,44 @@ if not tickers:
 send_message(f"✅ Catalyst Radar Startad\nUniverse: {len(tickers)}")
 
 
+# =========================
+# MAIN LOOP
+# =========================
 while True:
     try:
         now = datetime.now(sweden)
 
-        if last_heartbeat_hour != now.hour:
-            last_heartbeat_hour = now.hour
+        window_start, window_end = get_news_window(now)
 
-            tradable = []
+        # =========================
+        # RESET VID NYTT 22:00-FÖNSTER
+        # =========================
+        if active_window_start != window_start:
+            active_window_start = window_start
+            seen_ids.clear()
+            news_counter.clear()
+            catalyst_counter.clear()
+            last_radar_sent_at = None
 
-            for sym, score in catalyst_counter.items():
+            send_message(
+                f"🔄 Nytt news-fönster startat\n"
+                f"Start: {window_start.strftime('%Y-%m-%d %H:%M')}\n"
+                f"Slut: {window_end.strftime('%Y-%m-%d %H:%M')}"
+            )
 
-                mcap = fetch_market_cap(sym)
-                if not mcap:
-                    continue
-
-                if mcap < MIN_MCAP or mcap > MAX_MCAP:
-                    continue
-
-                intensity = news_counter.get(sym, 0)
-
-                tradable.append((sym, score, intensity, mcap))
-
-            tradable.sort(key=lambda x: (x[1], x[2]), reverse=True)
-
-            if tradable:
-
-                lines = [
-                    f"🫀 LIVE CATALYST RADAR {now.strftime('%H:%M')}",
-                    f"Tradable stocks: {len(tradable)}",
-                    ""
-                ]
-
-                for sym, score, intensity, mcap in tradable[:10]:
-                    lines.append(
-                        f"{sym} | cat:{score} | news:{intensity} | {round(mcap/1000,2)}B"
-                    )
-
-                send_message("\n".join(lines))
-
-            else:
-                send_message(
-                    f"🫀 LIVE CATALYST RADAR {now.strftime('%H:%M')}\nNo catalysts yet"
-                )
-
+        # =========================
+        # SAMLA NEWS
+        # =========================
         batch = tickers[ticker_index:ticker_index + BATCH_SIZE]
 
         for symbol in batch:
-            items = fetch_company_news(symbol)
+            items = fetch_company_news(symbol, now)
 
             for item in items:
-
                 news_id = item.get("id")
                 ts = item.get("datetime")
                 headline = item.get("headline", "")
+                summary = item.get("summary", "")
 
                 if not news_id or not ts:
                     continue
@@ -193,14 +336,15 @@ while True:
                 if news_id in seen_ids:
                     continue
 
-                if not is_valid_news_time(ts):
+                if not is_valid_news_time(ts, now):
                     continue
 
                 seen_ids.add(news_id)
 
                 news_counter[symbol] = news_counter.get(symbol, 0) + 1
 
-                score = catalyst_score(headline)
+                text = headline + " " + summary
+                score = catalyst_score(text)
 
                 if score > 0:
                     catalyst_counter[symbol] = catalyst_counter.get(symbol, 0) + score
@@ -208,36 +352,19 @@ while True:
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
         ticker_index += BATCH_SIZE
+
         if ticker_index >= len(tickers):
             ticker_index = 0
 
-        if (
-            (now.hour > REPORT_HOUR or
-             (now.hour == REPORT_HOUR and now.minute >= REPORT_MINUTE))
-            and report_sent_date != now.date()
-        ):
-
-            sorted_companies = sorted(
-                news_counter.items(),
-                key=lambda x: x[1],
-                reverse=True
-            )[:20]
-
-            lines = ["📊 PREMARKET NEWS INTENSITY\n"]
-
-            for sym, cnt in sorted_companies:
-                mcap = fetch_market_cap(sym)
-
-                if mcap:
-                    lines.append(f"{sym}: {cnt} | {round(mcap/1000,2)}B")
-                else:
-                    lines.append(f"{sym}: {cnt}")
-
-            send_message("\n".join(lines))
-
-            news_counter.clear()
-            catalyst_counter.clear()
-            report_sent_date = now.date()
+        # =========================
+        # SKICKA RADAR
+        # 14:30–16:30 = var 20:e minut
+        # annars = 1 gång/timme
+        # =========================
+        if should_send_radar(now, last_radar_sent_at):
+            message = build_radar_message(now, news_counter, catalyst_counter)
+            send_message(message)
+            last_radar_sent_at = now
 
         time.sleep(CHECK_INTERVAL)
 
