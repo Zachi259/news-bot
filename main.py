@@ -283,7 +283,6 @@ def should_send_radar(now, last_sent_at):
 
     return seconds_since_last >= interval
 
-
 def build_radar_message(now, news_counter, catalyst_counter, headline_tracker):
     tradable = []
 
