@@ -296,8 +296,9 @@ def build_radar_message(now, news_counter, catalyst_counter, headline_tracker):
             continue
 
         intensity = news_counter.get(sym, 0)
+        headline = headline_tracker.get(sym, "No headline")
 
-        tradable.append((sym, score, intensity, mcap))
+        tradable.append((sym, score, intensity, mcap, headline))
 
     tradable.sort(key=lambda x: (x[1], x[2]), reverse=True)
 
@@ -315,15 +316,13 @@ def build_radar_message(now, news_counter, catalyst_counter, headline_tracker):
         ""
     ]
 
-for sym, score, intensity, mcap in tradable[:15]:
-    headline = headline_tracker.get(sym, "No headline")
+    for sym, score, intensity, mcap, headline in tradable[:15]:
+        lines.append(
+            f"{sym} | impact:{score}/5 | news:{intensity} | {round(mcap / 1000, 2)}B"
+        )
+        lines.append(f"↳ {headline[:140]}")
+        lines.append("")
 
-    lines.append(
-        f"{sym} | impact:{score}/5 | news:{intensity} | {round(mcap / 1000, 2)}B"
-    )
-    lines.append(f"↳ {headline[:140]}")
-    lines.append("")
-    
     return "\n".join(lines)
 
 # =========================
@@ -367,6 +366,7 @@ while True:
             seen_ids.clear()
             news_counter.clear()
             catalyst_counter.clear()
+            headline_tracker.clear()
             last_radar_sent_at = None
 
             send_message(
@@ -405,11 +405,12 @@ while True:
                 text = headline + " " + summary
                 score = catalyst_score(text)
 
-                if score > 0:
-                    catalyst_counter[symbol] = max(
-                        catalyst_counter.get(symbol, 0),
-                        score
-                    )
+              if score > 0:
+                  old_score = catalyst_counter.get(symbol, 0)
+
+                  if score > old_score:
+                      catalyst_counter[symbol] = score
+                      headline_tracker[symbol] = headline
 
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
@@ -424,7 +425,7 @@ while True:
         # annars = 1 gång/timme
         # =========================
         if should_send_radar(now, last_radar_sent_at):
-            message = build_radar_message(now, news_counter, catalyst_counter)
+            message = build_radar_message(now, news_counter, catalyst_counter, headline_tracker)
             send_message(message)
             last_radar_sent_at = now
 
