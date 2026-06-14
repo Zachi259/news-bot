@@ -345,10 +345,6 @@ if not tickers:
 
 send_message(f"✅ Catalyst Radar Startad\nUniverse: {len(tickers)}")
 
-
-# =========================
-# MAIN LOOP
-# =========================
 # =========================
 # MAIN LOOP
 # =========================
@@ -405,12 +401,12 @@ while True:
                 text = headline + " " + summary
                 score = catalyst_score(text)
 
-              if score > 0:
-                  old_score = catalyst_counter.get(symbol, 0)
+                if score > 0:
+                    old_score = catalyst_counter.get(symbol, 0)
 
-                  if score > old_score:
-                      catalyst_counter[symbol] = score
-                      headline_tracker[symbol] = headline
+                    if score > old_score:
+                        catalyst_counter[symbol] = score
+                        headline_tracker[symbol] = headline
 
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
@@ -425,7 +421,13 @@ while True:
         # annars = 1 gång/timme
         # =========================
         if should_send_radar(now, last_radar_sent_at):
-            message = build_radar_message(now, news_counter, catalyst_counter, headline_tracker)
+            message = build_radar_message(
+                now,
+                news_counter,
+                catalyst_counter,
+                headline_tracker
+            )
+
             send_message(message)
             last_radar_sent_at = now
 
