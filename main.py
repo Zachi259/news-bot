@@ -59,25 +59,32 @@ def send_message(text):
 # =========================
 def get_news_window(now):
     """
-    Returnerar start/slut för aktiva nyhetsfönstret:
-    22:00 kvällen innan → 15:30 idag
-    eller om klockan är efter 22:00:
-    22:00 idag → 15:30 imorgon
+    Nyhetsfönster:
+    22:00 → 12:00 = natt/pre-market-data
+    12:00 → 15:30 = reset och bara nyaste inför öppning
+    Efter 22:00 startar nytt dygnsfönster igen
     """
 
+    # Efter 22:00: nytt nattfönster startar
     if now.hour >= 22:
         start = now.replace(hour=22, minute=0, second=0, microsecond=0)
         end = (now + timedelta(days=1)).replace(
-            hour=15, minute=30, second=0, microsecond=0
+            hour=12, minute=0, second=0, microsecond=0
         )
+
+    # Mellan 12:00 och 21:59: reset-fönster från idag 12:00
+    elif now.hour >= 12:
+        start = now.replace(hour=12, minute=0, second=0, microsecond=0)
+        end = now.replace(hour=15, minute=30, second=0, microsecond=0)
+
+    # Före 12:00: använd gårdagens 22:00 fram till idag 12:00
     else:
         start = (now - timedelta(days=1)).replace(
             hour=22, minute=0, second=0, microsecond=0
         )
-        end = now.replace(hour=15, minute=30, second=0, microsecond=0)
+        end = now.replace(hour=12, minute=0, second=0, microsecond=0)
 
     return start, end
-
 
 def is_valid_news_time(unix_ts, now):
     news_time = datetime.fromtimestamp(unix_ts, tz=sweden)
