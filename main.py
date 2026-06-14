@@ -399,11 +399,12 @@ while True:
                 text = headline + " " + summary
                 score = catalyst_score(text)
 
-               if score > 0:
-    catalyst_counter[symbol] = max(
-        catalyst_counter.get(symbol, 0),
-        score
-    )
+                if score > 0:
+                    catalyst_counter[symbol] = max(
+                        catalyst_counter.get(symbol, 0),
+                        score
+                    )
+
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
         ticker_index += BATCH_SIZE
