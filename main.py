@@ -178,37 +178,83 @@ def fetch_market_cap(symbol):
 def catalyst_score(text):
     text = text.lower()
 
-    keywords = [
-        "earnings",
-        "guidance",
-        "fda",
-        "trial",
-        "contract",
+    high_impact_keywords = [
+        "raises guidance",
+        "cuts guidance",
+        "guidance raised",
+        "guidance cut",
+        "beats estimates",
+        "misses estimates",
+        "above expectations",
+        "below expectations",
+
+        "fda approval",
+        "fda rejects",
+        "complete response letter",
+        "clinical hold",
+
+        "phase 3",
+        "topline results",
+        "primary endpoint met",
+        "failed to meet primary endpoint",
+        "statistically significant",
+
         "acquisition",
+        "takeover",
+        "merger",
+        "buyout",
+        "definitive agreement",
+
+        "wins contract",
+        "awarded contract",
+        "receives order",
+        "large order",
+        "multi-year contract",
+        "record backlog"
+    ]
+
+    medium_impact_keywords = [
+        "earnings",
+        "outlook",
+        "forecast",
+        "guidance",
+        "revenue",
+        "contract",
+        "order",
+        "backlog",
+        "partnership",
+        "trial",
+        "clinical",
+        "study"
+    ]
+
+    weak_alone_keywords = [
         "launch",
-        "approval",
         "partnership",
         "forecast",
         "revenue",
         "phase",
         "study",
         "clinical",
-        "merger",
-        "takeover",
-        "order",
-        "deal",
-        "backlog",
-        "outlook"
+        "deal"
     ]
 
-    score = 0
-
-    for k in keywords:
+    # 5 poäng: riktigt starka uttryck
+    for k in high_impact_keywords:
         if k in text:
-            score += 1
+            return 5
 
-    return score
+    # 3 poäng: okej men inte alltid explosivt
+    for k in medium_impact_keywords:
+        if k in text:
+            return 3
 
+    # 1 poäng: svaga om de är ensamma
+    for k in weak_alone_keywords:
+        if k in text:
+            return 1
+
+    return 0
 
 # =========================
 # RADAR SCHEMA
@@ -272,7 +318,7 @@ def build_radar_message(now, news_counter, catalyst_counter):
 
     for sym, score, intensity, mcap in tradable[:15]:
         lines.append(
-            f"{sym} | cat:{score} | news:{intensity} | {round(mcap / 1000, 2)}B"
+            f"{sym} | impact:{score}/5 | news:{intensity} | {round(mcap / 1000, 2)}B"
         )
 
     return "\n".join(lines)
@@ -353,9 +399,11 @@ while True:
                 text = headline + " " + summary
                 score = catalyst_score(text)
 
-                if score > 0:
-                    catalyst_counter[symbol] = catalyst_counter.get(symbol, 0) + score
-
+               if score > 0:
+    catalyst_counter[symbol] = max(
+        catalyst_counter.get(symbol, 0),
+        score
+    )
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
         ticker_index += BATCH_SIZE
