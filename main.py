@@ -351,6 +351,9 @@ send_message(f"✅ Catalyst Radar Startad\nUniverse: {len(tickers)}")
 # =========================
 # MAIN LOOP
 # =========================
+# =========================
+# MAIN LOOP
+# =========================
 while True:
     try:
         now = datetime.now(sweden)
@@ -358,15 +361,14 @@ while True:
         window_start, window_end = get_news_window(now)
 
         # =========================
-        # RESET VID NYTT 22:00-FÖNSTER
+        # RESET VID NYTT NEWS-FÖNSTER
         # =========================
         if active_window_start != window_start:
             active_window_start = window_start
-seen_ids.clear()
-news_counter.clear()
-catalyst_counter.clear()
-headline_tracker.clear()
-last_radar_sent_at = None
+            seen_ids.clear()
+            news_counter.clear()
+            catalyst_counter.clear()
+            last_radar_sent_at = None
 
             send_message(
                 f"🔄 Nytt news-fönster startat\n"
@@ -404,12 +406,11 @@ last_radar_sent_at = None
                 text = headline + " " + summary
                 score = catalyst_score(text)
 
-if score > 0:
-    old_score = catalyst_counter.get(symbol, 0)
-
-    if score > old_score:
-        catalyst_counter[symbol] = score
-        headline_tracker[symbol] = headline
+                if score > 0:
+                    catalyst_counter[symbol] = max(
+                        catalyst_counter.get(symbol, 0),
+                        score
+                    )
 
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
@@ -424,7 +425,7 @@ if score > 0:
         # annars = 1 gång/timme
         # =========================
         if should_send_radar(now, last_radar_sent_at):
-            message = build_radar_message(now, news_counter, catalyst_counter, headline_tracker)
+            message = build_radar_message(now, news_counter, catalyst_counter)
             send_message(message)
             last_radar_sent_at = now
 
