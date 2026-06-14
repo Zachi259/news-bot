@@ -284,7 +284,7 @@ def should_send_radar(now, last_sent_at):
     return seconds_since_last >= interval
 
 
-def build_radar_message(now, news_counter, catalyst_counter):
+def build_radar_message(now, news_counter, catalyst_counter, headline_tracker):
     tradable = []
 
     for sym, score in catalyst_counter.items():
@@ -316,13 +316,16 @@ def build_radar_message(now, news_counter, catalyst_counter):
         ""
     ]
 
-    for sym, score, intensity, mcap in tradable[:15]:
-        lines.append(
-            f"{sym} | impact:{score}/5 | news:{intensity} | {round(mcap / 1000, 2)}B"
-        )
+for sym, score, intensity, mcap in tradable[:15]:
+    headline = headline_tracker.get(sym, "No headline")
 
+    lines.append(
+        f"{sym} | impact:{score}/5 | news:{intensity} | {round(mcap / 1000, 2)}B"
+    )
+    lines.append(f"↳ {headline[:140]}")
+    lines.append("")
+    
     return "\n".join(lines)
-
 
 # =========================
 # INIT
@@ -330,6 +333,7 @@ def build_radar_message(now, news_counter, catalyst_counter):
 seen_ids = set()
 news_counter = {}
 catalyst_counter = {}
+headline_tracker = {}
 
 ticker_index = 0
 last_radar_sent_at = None
@@ -358,10 +362,11 @@ while True:
         # =========================
         if active_window_start != window_start:
             active_window_start = window_start
-            seen_ids.clear()
-            news_counter.clear()
-            catalyst_counter.clear()
-            last_radar_sent_at = None
+seen_ids.clear()
+news_counter.clear()
+catalyst_counter.clear()
+headline_tracker.clear()
+last_radar_sent_at = None
 
             send_message(
                 f"🔄 Nytt news-fönster startat\n"
@@ -399,11 +404,12 @@ while True:
                 text = headline + " " + summary
                 score = catalyst_score(text)
 
-                if score > 0:
-                    catalyst_counter[symbol] = max(
-                        catalyst_counter.get(symbol, 0),
-                        score
-                    )
+if score > 0:
+    old_score = catalyst_counter.get(symbol, 0)
+
+    if score > old_score:
+        catalyst_counter[symbol] = score
+        headline_tracker[symbol] = headline
 
             time.sleep(SLEEP_BETWEEN_SYMBOLS)
 
@@ -418,7 +424,7 @@ while True:
         # annars = 1 gång/timme
         # =========================
         if should_send_radar(now, last_radar_sent_at):
-            message = build_radar_message(now, news_counter, catalyst_counter)
+            message = build_radar_message(now, news_counter, catalyst_counter, headline_tracker)
             send_message(message)
             last_radar_sent_at = now
 
