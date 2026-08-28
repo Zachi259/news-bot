@@ -10,7 +10,7 @@ sweden = ZoneInfo("Europe/Stockholm")
 # =========================
 # KONFIGURATION
 # =========================
-BOT_TOKEN = "7980179520:AAEjd0iiVhXwkRLNcg0Htj0ATArvklHQgIE"
+BOT_TOKEN = "7980179520:AAE5tVaTy6BuA2uptIcyQCdnhVdArQV3K3c"
 CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
