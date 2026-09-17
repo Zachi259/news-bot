@@ -11,7 +11,7 @@ sweden = ZoneInfo("Europe/Stockholm")
 # =========================
 # KONFIGURATION
 # =========================
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = "5828070794"
 FINNHUB_API_KEY = "d5e1e61r01qjckl18q0gd5e1e61r01qjckl18q10"
 
