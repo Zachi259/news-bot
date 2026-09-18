@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-print("🔥 BOT VERSION CATALYST RADAR V3 + EARNINGS 🔥")
+print("🔥 BOT VERSION CATALYST RADAR V4 + FIXED SCHEDULE 🔥")
 
 sweden = ZoneInfo("Europe/Stockholm")
 
@@ -12,7 +12,7 @@ sweden = ZoneInfo("Europe/Stockholm")
 # KONFIGURATION
 # =========================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 
 CHECK_INTERVAL = 60
@@ -23,14 +23,26 @@ SLEEP_BETWEEN_SYMBOLS = 1
 MIN_MCAP = 300       # 300M USD
 MAX_MCAP = 20000     # 20B USD
 
-FAST_START_HOUR = 14
-FAST_START_MINUTE = 30
+# Exakta tider då radarn ska skickas (svensk tid).
+SEND_TIMES = [
+    (11, 0),
+    (12, 0),
+    (14, 0),
+    (15, 0),
+    (15, 30),
+    (15, 50),
+    (16, 20),
+    (20, 0),
+    (21, 30),
+    (22, 0),
+]
 
-FAST_END_HOUR = 16
-FAST_END_MINUTE = 30
-
-FAST_INTERVAL_SECONDS = 20 * 60
-NORMAL_INTERVAL_SECONDS = 60 * 60
+# Efter rapporten 16:20 börjar ett nytt kvällsfönster.
+# Efter rapporten 22:00 börjar ett nytt natt/dag-fönster.
+RESET_AFTER_SEND = {
+    (16, 20),
+    (22, 0),
+}
 
 # Earnings-kalendern uppdateras var 15:e minut.
 # Det är bara ett extra Finnhub-anrop per uppdatering.
@@ -60,52 +72,90 @@ def send_message(text):
 
 
 # =========================
-# TIDSFÖNSTER 22:00 → 15:30
+# NEWS-FÖNSTER + FASTA SKICKTIDER
 # =========================
-def get_news_window(now):
+def get_initial_window_start(now):
     """
-    Nyhetsfönster:
-    22:00 → 12:00 = natt/pre-market-data
-    12:00 → 15:30 = reset och bara nyaste inför öppning
-    Efter 22:00 startar nytt dygnsfönster igen
+    Aktivt news-fönster:
+    22:00 → 16:20 nästa dag
+    16:20 → 22:00 samma dag
+
+    Själva resetten sker EFTER att 16:20- respektive 22:00-rapporten
+    har skickats.
     """
+    today_1620 = now.replace(hour=16, minute=20, second=0, microsecond=0)
+    today_2200 = now.replace(hour=22, minute=0, second=0, microsecond=0)
 
-    if now.hour >= 22:
-        start = now.replace(hour=22, minute=0, second=0, microsecond=0)
-        end = (now + timedelta(days=1)).replace(
-            hour=12, minute=0, second=0, microsecond=0
-        )
+    if now >= today_2200:
+        return today_2200
 
-    elif now.hour >= 12:
-        start = now.replace(hour=12, minute=0, second=0, microsecond=0)
-        end = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    if now >= today_1620:
+        return today_1620
 
-    else:
-        start = (now - timedelta(days=1)).replace(
-            hour=22, minute=0, second=0, microsecond=0
-        )
-        end = now.replace(hour=12, minute=0, second=0, microsecond=0)
-
-    return start, end
+    return (now - timedelta(days=1)).replace(
+        hour=22, minute=0, second=0, microsecond=0
+    )
 
 
-def is_valid_news_time(unix_ts, now):
+def is_valid_news_time(unix_ts, now, window_start):
     news_time = datetime.fromtimestamp(unix_ts, tz=sweden)
-    start, end = get_news_window(now)
-    return start <= news_time <= end
+    return window_start <= news_time <= now
+
+
+def get_schedule_slots(now):
+    """Returnerar gårdagens + dagens schemalagda tider."""
+    slots = []
+
+    for day_offset in (-1, 0):
+        day = now + timedelta(days=day_offset)
+
+        for hour, minute in SEND_TIMES:
+            slots.append(
+                day.replace(
+                    hour=hour,
+                    minute=minute,
+                    second=0,
+                    microsecond=0
+                )
+            )
+
+    return sorted(slots)
+
+
+def get_latest_due_slot(now):
+    due = [slot for slot in get_schedule_slots(now) if slot <= now]
+    return due[-1] if due else None
+
+
+def get_initial_last_sent_slot(now):
+    """
+    Vid omstart markerar vi redan passerade schematider som klara,
+    så botten inte skickar gamla rapporter direkt efter en deploy.
+    """
+    return get_latest_due_slot(now)
+
+
+def get_due_send_slot(now, last_sent_slot):
+    latest = get_latest_due_slot(now)
+
+    if latest is None:
+        return None
+
+    if last_sent_slot is None or latest > last_sent_slot:
+        return latest
+
+    return None
 
 
 # =========================
 # FINNHUB
 # =========================
-def fetch_company_news(symbol, now):
+def fetch_company_news(symbol, now, window_start):
     url = "https://finnhub.io/api/v1/company-news"
-
-    start, _ = get_news_window(now)
 
     params = {
         "symbol": symbol,
-        "from": start.strftime("%Y-%m-%d"),
+        "from": window_start.strftime("%Y-%m-%d"),
         "to": now.strftime("%Y-%m-%d"),
         "token": FINNHUB_API_KEY
     }
@@ -174,16 +224,15 @@ def fetch_market_cap(symbol):
         return None
 
 
-def fetch_earnings_calendar(now):
+def fetch_earnings_calendar(now, window_start):
     """
     Hämtar earnings för datumen som kan beröra det aktiva news-fönstret.
     Returnerar {symbol: event}.
     """
-    start, _ = get_news_window(now)
     url = "https://finnhub.io/api/v1/calendar/earnings"
 
     params = {
-        "from": start.strftime("%Y-%m-%d"),
+        "from": window_start.strftime("%Y-%m-%d"),
         "to": now.strftime("%Y-%m-%d"),
         "token": FINNHUB_API_KEY
     }
@@ -437,33 +486,8 @@ def catalyst_score(text):
 
 
 # =========================
-# RADAR SCHEMA
+# RADAR-MEDDELANDE
 # =========================
-def in_fast_send_window(now):
-    current_minutes = now.hour * 60 + now.minute
-    start_minutes = FAST_START_HOUR * 60 + FAST_START_MINUTE
-    end_minutes = FAST_END_HOUR * 60 + FAST_END_MINUTE
-
-    return start_minutes <= current_minutes <= end_minutes
-
-
-def current_send_interval(now):
-    if in_fast_send_window(now):
-        return FAST_INTERVAL_SECONDS
-
-    return NORMAL_INTERVAL_SECONDS
-
-
-def should_send_radar(now, last_sent_at):
-    if last_sent_at is None:
-        return True
-
-    interval = current_send_interval(now)
-    seconds_since_last = (now - last_sent_at).total_seconds()
-
-    return seconds_since_last >= interval
-
-
 def build_radar_message(
     now,
     news_counter,
@@ -558,8 +582,9 @@ earnings_calendar = {}
 last_earnings_refresh_at = None
 
 ticker_index = 0
-last_radar_sent_at = None
-active_window_start = None
+startup_now = datetime.now(sweden)
+active_window_start = get_initial_window_start(startup_now)
+last_sent_slot = get_initial_last_sent_slot(startup_now)
 
 # Snabb kontroll utan att skriva ut några hemligheter.
 print("Telegram token loaded:", bool(BOT_TOKEN))
@@ -576,7 +601,7 @@ if not tickers:
     send_message("❌ Kunde inte ladda symboler")
     raise SystemExit
 
-send_message(f"✅ Catalyst Radar V3 Startad\nUniverse: {len(tickers)}")
+send_message(f"✅ Catalyst Radar V4 Startad\nUniverse: {len(tickers)}")
 
 
 # =========================
@@ -585,28 +610,45 @@ send_message(f"✅ Catalyst Radar V3 Startad\nUniverse: {len(tickers)}")
 while True:
     try:
         now = datetime.now(sweden)
-        window_start, window_end = get_news_window(now)
 
         # =========================
-        # RESET VID NYTT NEWS-FÖNSTER
+        # SKICKA ENDAST VID FASTA TIDER
+        # 11:00, 12:00, 14:00, 15:00,
+        # 15:30, 15:50, 16:20,
+        # 20:00, 21:30, 22:00
         # =========================
-        if active_window_start != window_start:
-            active_window_start = window_start
-            seen_ids.clear()
-            news_counter.clear()
-            catalyst_counter.clear()
-            headline_tracker.clear()
-            earnings_tracker.clear()
-            earnings_calendar.clear()
+        due_slot = get_due_send_slot(now, last_sent_slot)
 
-            last_radar_sent_at = None
-            last_earnings_refresh_at = None
-
-            send_message(
-                f"🔄 Nytt news-fönster startat\n"
-                f"Start: {window_start.strftime('%Y-%m-%d %H:%M')}\n"
-                f"Slut: {window_end.strftime('%Y-%m-%d %H:%M')}"
+        if due_slot is not None:
+            message = build_radar_message(
+                due_slot,
+                news_counter,
+                catalyst_counter,
+                headline_tracker,
+                earnings_tracker
             )
+
+            send_message(message)
+            last_sent_slot = due_slot
+
+            # RESET EFTER att rapporten har skickats.
+            # 16:20 → nytt kvällsfönster
+            # 22:00 → nytt natt/dag-fönster
+            if (due_slot.hour, due_slot.minute) in RESET_AFTER_SEND:
+                seen_ids.clear()
+                news_counter.clear()
+                catalyst_counter.clear()
+                headline_tracker.clear()
+                earnings_tracker.clear()
+                earnings_calendar.clear()
+
+                active_window_start = due_slot
+                last_earnings_refresh_at = None
+
+                print(
+                    "🔄 Radar reset efter",
+                    due_slot.strftime("%Y-%m-%d %H:%M")
+                )
 
         # =========================
         # UPPDATERA EARNINGS VAR 15:E MINUT
@@ -615,7 +657,10 @@ while True:
             last_earnings_refresh_at is None
             or (now - last_earnings_refresh_at).total_seconds() >= EARNINGS_REFRESH_SECONDS
         ):
-            fresh_earnings = fetch_earnings_calendar(now)
+            fresh_earnings = fetch_earnings_calendar(
+                now,
+                active_window_start
+            )
 
             if fresh_earnings is not None:
                 earnings_calendar = fresh_earnings
@@ -643,7 +688,11 @@ while True:
         batch = tickers[ticker_index:ticker_index + BATCH_SIZE]
 
         for symbol in batch:
-            items = fetch_company_news(symbol, now)
+            items = fetch_company_news(
+                symbol,
+                now,
+                active_window_start
+            )
 
             for item in items:
                 news_id = item.get("id")
@@ -657,7 +706,11 @@ while True:
                 if news_id in seen_ids:
                     continue
 
-                if not is_valid_news_time(ts, now):
+                if not is_valid_news_time(
+                    ts,
+                    now,
+                    active_window_start
+                ):
                     continue
 
                 seen_ids.add(news_id)
@@ -695,23 +748,6 @@ while True:
 
         if ticker_index >= len(tickers):
             ticker_index = 0
-
-        # =========================
-        # SKICKA RADAR
-        # 14:30–16:30 = var 20:e minut
-        # annars = 1 gång/timme
-        # =========================
-        if should_send_radar(now, last_radar_sent_at):
-            message = build_radar_message(
-                now,
-                news_counter,
-                catalyst_counter,
-                headline_tracker,
-                earnings_tracker
-            )
-
-            send_message(message)
-            last_radar_sent_at = now
 
         time.sleep(CHECK_INTERVAL)
 
